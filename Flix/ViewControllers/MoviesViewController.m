@@ -11,12 +11,15 @@
 #import "DetailsViewController.h"
 
 
-@interface MoviesViewController () <UITableViewDataSource, UITableViewDelegate>
+@interface MoviesViewController () <UITableViewDataSource, UITableViewDelegate, UISearchBarDelegate>
 
 @property(nonatomic, strong) NSArray *movies;
+@property(strong, nonatomic) NSArray *data;
+@property(strong, nonatomic) NSArray *filteredData;
 @property(nonatomic, strong) UIRefreshControl *refreshControl;
 @property (weak, nonatomic) IBOutlet UITableView *tableView;
 @property (weak, nonatomic) IBOutlet UIActivityIndicatorView *loadingIcon;
+@property (weak, nonatomic) IBOutlet UISearchBar *movieSearchBar;
 
 @end
 
@@ -33,6 +36,8 @@
     self.refreshControl = [[UIRefreshControl alloc] init];
     [self.refreshControl addTarget:self action:@selector(fetchMovies) forControlEvents:UIControlEventValueChanged];
     [self.tableView insertSubview:self.refreshControl atIndex:0];
+    
+    self.movieSearchBar.delegate = self;
 }
 
 - (void)fetchMovies {
@@ -61,10 +66,8 @@
                NSDictionary *dataDictionary = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableContainers error:nil];
                
                self.movies = dataDictionary[@"results"];
-               for(NSDictionary *movie in self.movies) {
-                   NSLog(@"%@", movie[@"title"]);
-               }
-               
+               self.filteredData = self.movies;
+
                [self.tableView reloadData];
                
            }
@@ -75,14 +78,14 @@
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    return self.movies.count;
+    return self.filteredData.count;
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     
     MovieCell *cell = [tableView dequeueReusableCellWithIdentifier:@"MovieCell"];
     
-    NSDictionary *movie = self.movies[indexPath.row];
+    NSDictionary *movie = self.filteredData[indexPath.row];
     cell.titleLabel.text = movie[@"title"];
     cell.descriptionLabel.text = movie[@"overview"];
     
@@ -97,6 +100,28 @@
     return cell;
 }
 
+- (void)movieSearchBar:(UISearchBar *)searchBar textDidChange:(NSString *)searchText {
+    
+    
+    if (searchText.length != 0) {
+        
+        NSPredicate *predicate = [NSPredicate predicateWithBlock:^BOOL(NSString *evaluatedObject, NSDictionary *bindings) {
+            NSDictionary *movie = (NSDictionary*) evaluatedObject;
+            return [movie[@"title"] containsString:searchText];
+        }];
+        self.filteredData = [self.movies filteredArrayUsingPredicate:predicate];
+        
+        NSLog(@"%@", self.movies);
+        NSLog(@"%@", self.filteredData);
+        
+    }
+    else {
+        self.filteredData = self.movies;
+    }
+    
+    [self.tableView reloadData];
+ 
+}
 
 #pragma mark - Navigation
 
